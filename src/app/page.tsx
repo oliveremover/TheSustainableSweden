@@ -1,6 +1,6 @@
-import { Card, Flex, Text, Progress, Container, Heading, Grid } from "@radix-ui/themes";
+import { Card, Flex, Text, Progress, Container, Heading, Grid, SegmentedControl } from "@radix-ui/themes";
 import { createClient } from '@/utils/supabase/server';
-import MilestoneCard from "./components/MilestoneCard";
+import MilestoneGrid from "./components/MilestoneGrid";
 import styles from "./page.module.css";
 
 export type Milestone = {
@@ -47,7 +47,7 @@ export default async function HomePage() {
   const needAttentionMilestones = milestones.filter((m) => m.progress < 40).length;
 
   return (
-    <Container size="4" py="6">
+    <Container size="4" py="6" mx="4">
       <Flex direction="column" gap="6">
         {/* Header */}
         <Flex direction="column" gap="3" align="center">
@@ -67,7 +67,7 @@ export default async function HomePage() {
                 {completedMilestones}
               </Text>
               <Text size="2" color="gray" align="center">
-                On Track (≥70%)
+                Ahead (≥70%)
               </Text>
             </Flex>
           </Card>
@@ -78,7 +78,7 @@ export default async function HomePage() {
                 {inProgressMilestones}
               </Text>
               <Text size="2" color="gray" align="center">
-                In Progress (40-69%)
+                On Track (40-69%)
               </Text>
             </Flex>
           </Card>
@@ -105,17 +105,12 @@ export default async function HomePage() {
             </Flex>
           </Card>
         </Grid>
-
-        {/* Milestones Grid */}
-        <Flex direction="column" gap="4">
-          <Heading size="5">Environmental Milestones</Heading>
-          <Grid columns={{ initial: "1", sm: "2", lg: "3" }} gap="4">
-            {milestones.map((milestone) => (
-              <MilestoneCard key={milestone.id} milestone={milestone} />
-            ))}
-          </Grid>
-        </Flex>
-      </Flex>
-    </Container>
-  );
-}
+         {/* Milestones Grid */}
+         <Flex direction="column" gap="4">
+           <Heading size="5">Environmental Milestones</Heading>
+          <MilestoneGrid milestones={milestones} />
+         </Flex>
+       </Flex>
+     </Container>
+   );
+ }
