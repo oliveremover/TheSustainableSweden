@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { parsePxToSeries } from "@/utils/scb/px";
 
 const SECRET = process.env.SCB_SYNC_SECRET; // set in .env / Vercel
 
@@ -9,10 +10,28 @@ async function fetchWithCondition(url: string, etag?: string, lastModified?: str
   if (lastModified) headers["If-Modified-Since"] = lastModified;
   const res = await fetch(url, { headers });
   if (res.status === 304) return { status: 304 };
-  const json = await res.json();
+  const ct = (res.headers.get("content-type") ?? "").toLowerCase();
+  if (ct.includes("application/json") || ct.includes("text/json")) {
+    const json = await res.json().catch(() => null);
+    return {
+      status: res.status,
+      json,
+      pxText: null,
+      payloadCount: Array.isArray(json) ? json.length : null,
+      etag: res.headers.get("etag") ?? undefined,
+      lastModified: res.headers.get("last-modified") ?? undefined,
+    };
+  }
+  const text = await res.text().catch(() => "");
+  // parse PX DATA block count and return PX text
+  const dataMatch = /DATA\s*=\s*([\s\S]*?);/i.exec(text);
+  const dataBlock = dataMatch ? dataMatch[1].replace(/[\r\n]+/g, " ").trim() : "";
+  const tokens = dataBlock.split(/\s+/).filter((t) => /^-?\d+(?:[.,]\d+)?$/.test(t));
   return {
     status: res.status,
-    json,
+    json: null,
+    pxText: text,
+    payloadCount: tokens.length,
     etag: res.headers.get("etag") ?? undefined,
     lastModified: res.headers.get("last-modified") ?? undefined,
   };
@@ -33,7 +52,7 @@ export async function GET() {
     .from("milestones")
     .select("id, created_at, title, description, category, progress")
     .order("id", { ascending: true });
-
+    
   if (mErr) {
     return NextResponse.json({ error: mErr.message }, { status: 500 });
   }
@@ -70,7 +89,23 @@ export async function GET() {
   // 3) merge and return
   const merged = (milestones ?? []).map((m: any) => ({
     ...m,
-    scb: cacheByMilestone.get(m.id) ?? [], // array of cache entries for that milestone
+    scb: (cacheByMilestone.get(m.id) ?? []).map((c: any) => {
+      // expose parsed series/categories if present in transformed
+      const transformed = c.transformed ?? null;
+      return {
+        sourceId: c.sourceId,
+        url: c.url,
+        lastFetched: c.lastFetched,
+        etag: c.etag,
+        lastModified: c.lastModified,
+        status: c.status,
+        transformed: transformed,
+        series: transformed?.series ?? null,
+        categories: transformed?.categories ?? null,
+        seriesPoints: transformed?.seriesPoints ?? null,
+        raw: c.raw ?? null,
+      };
+    }),
   }));
 
   return NextResponse.json(merged, {
@@ -109,14 +144,32 @@ export async function POST(req: Request) {
       continue;
     }
     if (res.status >= 200 && res.status < 300) {
-      // transform minimal fields server-side if needed
-      const transformed = { fetchedAt: new Date().toISOString(), payloadSummary: Array.isArray(res.json) ? (res.json as any[]).length : null };
+      // transform minimal fields server-side and store parsed series for PX
+      const transformed: any = { fetchedAt: new Date().toISOString(), payloadSummary: null, series: null, categories: null, pxText: null };
+      let rawToStore: any = null;
+      if (res.json != null) {
+        transformed.payloadSummary = Array.isArray(res.json) ? (res.json as any[]).length : null;
+        rawToStore = res.json;
+      } else if (res.pxText != null) {
+        transformed.payloadSummary = res.payloadCount ?? null;
+        transformed.pxText = res.pxText;
+        try {
+          const parsed = parsePxToSeries(res.pxText);
+          transformed.series = parsed.values;
+          transformed.categories = parsed.categories;
+        } catch {
+          transformed.series = [];
+          transformed.categories = [];
+        }
+        rawToStore = null;
+      }
+
       await supabase.from("scb_cache").upsert({
         source_id: src.id,
         last_fetched: new Date().toISOString(),
         etag: res.etag,
         last_modified: res.lastModified,
-        raw: res.json,
+        raw: rawToStore,
         transformed,
         status: "ok",
         updated_at: new Date().toISOString(),

@@ -3,9 +3,9 @@
 	padding: 12px;
 	width: 340px;
 	background-color: color(display-p3 .098 .098 .098);
-  border: 1px solid color-mix(in oklab, color(display-p3 1 1 1 / .172), color(display-p3 .228 .228 .228) 25%);
+  	border: 1px solid color-mix(in oklab, color(display-p3 1 1 1 / .172), color(display-p3 .228 .228 .228) 25%);
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI (Custom)", Roboto, "Helvetica Neue", "Open Sans (Custom)", system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  box-shadow:
+ 	box-shadow:
 		hsl(206 22% 7% / 35%) 0px 10px 38px -10px,
 		hsl(206 22% 7% / 20%) 0px 10px 20px -15px;
 	animation-duration: 400ms;
