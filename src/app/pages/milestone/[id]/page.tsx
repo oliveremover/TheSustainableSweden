@@ -30,12 +30,15 @@ type Milestone = {
 };
 
 export default async function MilestonePage({ params }: { params: { id: string } }) {
-  const id = Number(params.id);
+  // await params before using its properties to satisfy Next.js dynamic API requirement
+  const { id } = (await params) as { id: string };
+  const idNum = Number(id);
+
   const supabase = await createClient();
   const { data: milestone, error } = await supabase
     .from("milestones")
     .select("id, created_at, title, description, category, progress")
-    .eq("id", id)
+    .eq("id", idNum)
     .maybeSingle();
 
   if (error || !milestone) {
@@ -88,11 +91,13 @@ export default async function MilestonePage({ params }: { params: { id: string }
 
           <Box pt="3">
             <Tabs.Content value="overview">
-              <Heading size="6" mb="5">Our Progress</Heading>
+              <Heading size="6" mb="5" mt="5">Our Progress</Heading>
               <div style={{ width: "100%", minWidth: 0 }}>
-                <MilestoneChart data={sampleData} />
+                <Card size="3" mb="2">
+                  <MilestoneChart data={sampleData} />
+                </Card>
+                <Text size="2">Data gathered from ...</Text>
               </div>
-              <Text size="2">Data gathered from ...</Text>
             </Tabs.Content>
 
             <Tabs.Content value="actions">
