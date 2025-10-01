@@ -1,25 +1,8 @@
-import { Card, Flex, Text, Progress, Container, Heading, Box, Tabs } from "@radix-ui/themes";
+import { Card, Flex, Text, Container, Heading, Box, Tabs } from "@radix-ui/themes";
 import { createClient } from "@/utils/supabase/server";
 import MilestoneChart from "@/app/components/MilestoneChart";
 import BackButton from "@/app/components/BackButton";
-
-const sampleData = [
-  { name: "2010", uv: 400, pv: 400, amt: 2400 },
-  { name: "2011", uv: 385, pv: 380, amt: 2350 },
-  { name: "2012", uv: 370, pv: 360, amt: 2300 },
-  { name: "2013", uv: 355, pv: 340, amt: 2250 },
-  { name: "2014", uv: 340, pv: 320, amt: 2200 },
-  { name: "2015", uv: 325, pv: 300, amt: 2150 },
-  { name: "2016", uv: 310, pv: 280, amt: 2100 },
-  { name: "2017", uv: 295, pv: 260, amt: 2050 },
-  { name: "2018", uv: 280, pv: 240, amt: 2000 },
-  { name: "2019", uv: 265, pv: 220, amt: 1950 },
-  { name: "2020", uv: 250, pv: 200, amt: 1900 },
-  { name: "2021", uv: 240, pv: 180, amt: 1850 },
-  { name: "2022", uv: 230, pv: 160, amt: 1800 },
-  { name: "2023", uv: 220, pv: 140, amt: 1750 },
-  { name: "2024", uv: 210, pv: 120, amt: 1700 },
-];
+import ProgressWithExpected from "@/app/components/ProgressWithExpected";
 
 type Milestone = {
   id: number;
@@ -97,6 +80,7 @@ export default async function MilestonePage({ params }: { params: { id: string }
 
   // build chartData; when goalSpec exists produce a full-year range from startYear..endYear
   let chartData;
+  let expectedPercent: number | null = null; // percent we "should" have reached at this stage (0-100)
   if (goalSpec != null) {
     const { startYear, endYear, startValue, endValue } = goalSpec;
     // map existing uv values by year for reuse
@@ -123,6 +107,22 @@ export default async function MilestonePage({ params }: { params: { id: string }
       const pv = startValue + t * (endValue - startValue);
       const uv = uvByYear.has(y) ? uvByYear.get(y) : null;
       rows.push({ name: String(y), uv: uv, pv: Number(pv.toFixed(3)) });
+    }
+    // Compute "expected percent reached" for the current stage (use current year clamped to goal range)
+    // We pick currentYear = Math.min(current calendar year, endYear)
+    const currentYear = Math.min(new Date().getFullYear(), endYear);
+    const rowForCurrent = rows.find((r) => Number(r.name) === currentYear) ?? rows[rows.length - 1];
+    if (rowForCurrent) {
+      const expectedValue = Number(rowForCurrent.pv);
+      const totalReduction = startValue - endValue;
+      const achievedReductionByNow = startValue - expectedValue;
+      if (isFinite(totalReduction) && totalReduction > 0) {
+        expectedPercent = Math.max(0, Math.min(100, Math.round((achievedReductionByNow / totalReduction) * 100)));
+      } else {
+        expectedPercent = null;
+      }
+    } else {
+      expectedPercent = null;
     }
 
     // keep any extra years outside the goal range (e.g., if baseChartData has earlier or later years)
@@ -182,13 +182,20 @@ export default async function MilestonePage({ params }: { params: { id: string }
 
             <Flex direction="column" gap="2">
               <Text size="2" color="gray">Progress</Text>
-              <Progress
-                value={milestone.progress}
-                size="3"
-                variant={milestone.progress >= 70 ? "soft" : milestone.progress >= 40 ? "surface" : "soft"}
-                color={milestone.progress >= 70 ? "green" : milestone.progress >= 40 ? "blue" : "red"}
+              {/* Re-usable progress component with expected percent computed earlier on the page */}
+              <ProgressWithExpected
+                progress={milestone.progress}
+                expectedPercent={expectedPercent}
+                expectedLabel={
+                  typeof expectedPercent === "number"
+                    ? `Expected ~${expectedPercent}% by ${
+                        transformed && Array.isArray(transformed.categories) && transformed.categories.length > 0
+                          ? transformed.categories[transformed.categories.length - 1]
+                          : goalSpec?.endYear ?? new Date().getFullYear()
+                      }`
+                    : undefined
+                }
               />
-              <Text size="4" weight="bold">{milestone.progress}%</Text>
             </Flex>
 
             <Text size="3">{milestone.description}</Text>

@@ -161,88 +161,24 @@ async function main() {
         // payloadSummary value when available.
         if (!upErr && typeof src.milestone_id === "number") {
           try {
-            // read current progress and goal JSON from milestone
             const { data: milestoneRow, error: mErr } = await supabase
               .from("milestones")
-              .select("progress, goal")
+              .select("progress")
               .eq("id", src.milestone_id)
               .maybeSingle();
 
             if (mErr) {
               console.error("  failed to read milestone:", mErr.message);
             } else if (milestoneRow) {
-              const currentProgress = Number(milestoneRow.progress ?? 0);
-              let newProgress = currentProgress;
+              const current = Number(milestoneRow.progress ?? 0);
+              
+              const { error: updErr } = await supabase
+                .from("milestones")
+                .update({ progress: current })
+                .eq("id", src.milestone_id);
 
-              // Prefer computing percent progress from numeric series + milestone.goal
-              const t = transformed ?? {};
-              if (Array.isArray(t.series) && Array.isArray(t.categories) && t.series.length > 0) {
-                // find latest numeric value in series
-                const numericSeries = t.series.map((v: any) => (v == null ? NaN : Number(v)));
-                let idx = -1;
-                for (let i = numericSeries.length - 1; i >= 0; i--) {
-                  if (isFinite(numericSeries[i])) {
-                    idx = i;
-                    break;
-                  }
-                }
-
-                if (idx !== -1) {
-                  const currentValue = Number(numericSeries[idx]);
-
-                  // try to read goal spec from milestone.goal
-                  const goal = milestoneRow.goal ?? null;
-                  let calculatedPct: number | null = null;
-
-                  if (goal && typeof goal === "object") {
-                    const base = Array.isArray(goal.series) && isFinite(Number(goal.series[0])) ? Number(goal.series[0]) : null;
-                    const change =
-                      Array.isArray(goal.change) && isFinite(Number(goal.change[0]))
-                        ? Number(goal.change[0])
-                        : typeof goal.change === "number" && isFinite(goal.change)
-                        ? Number(goal.change)
-                        : null;
-
-                    if (base != null && change != null && change > 0) {
-                      // target reduction = base * change
-                      const targetReduction = base * change;
-                      const achievedReduction = base - currentValue;
-                      calculatedPct = Math.round((achievedReduction / targetReduction) * 100);
-                    } else if (base != null && base > 0) {
-                      // fallback: progress = percent reduction vs base
-                      calculatedPct = Math.round(((base - currentValue) / base) * 100);
-                    }
-                  } else {
-                    // no goal present: use percent change vs first series value (if available)
-                    const base = numericSeries[0];
-                    if (isFinite(base) && base > 0) {
-                      calculatedPct = Math.round(((base - currentValue) / base) * 100);
-                    }
-                  }
-
-                  if (calculatedPct != null && isFinite(calculatedPct)) {
-                    newProgress = Math.max(0, Math.min(100, calculatedPct));
-                  }
-                }
-              } else if (typeof t.payloadSummary === "number") {
-                // legacy behavior: increment by payloadSummary when numeric series not available
-                newProgress = Math.max(0, Math.min(100, currentProgress + Number(t.payloadSummary)));
-              }
-
-              // only update if changed
-              if (newProgress !== currentProgress) {
-                const { error: updErr } = await supabase
-                  .from("milestones")
-                  .update({ progress: newProgress })
-                  .eq("id", src.milestone_id);
-
-                if (updErr) {
-                  console.error("  milestone update error:", updErr.message);
-                } else {
-                  console.log(`  milestone.id=${src.milestone_id} progress ${currentProgress} -> ${newProgress}`);
-                }
-              } else {
-                console.log(`  milestone.id=${src.milestone_id} progress unchanged (${currentProgress}%)`);
+              if (updErr) {
+                console.error("  milestone update error:", updErr.message);
               }
             }
           } catch (e) {

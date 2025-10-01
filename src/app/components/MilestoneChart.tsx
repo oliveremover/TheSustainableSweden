@@ -9,7 +9,7 @@ export default function MilestoneChart({ data }: { data: Array<Record<string, an
       <LineChart data={data} margin={{ top: 10, right: 20, bottom: 5, left: 5 }}>
         <CartesianGrid stroke="#4b4b4bff" strokeDasharray="5 5" />
         <Line type="monotone" dataKey="uv" stroke="purple" strokeWidth={2} name="Where we are at" />
-        <Line type="monotone" dataKey="pv" stroke="green" strokeWidth={2} name="Where we need to be" strokeDasharray="5 5" />
+        <Line type="monotone" dataKey="pv" stroke="green" strokeWidth={2} name="Where we need to be" strokeDasharray="5 10" dot={false} />
         <XAxis dataKey="name" />
         <YAxis width={50} />
         <Legend align="right" />
