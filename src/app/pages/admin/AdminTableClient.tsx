@@ -107,7 +107,7 @@ export default function AdminTableClient({ initialRows }: { initialRows: Milesto
                   <Table.Cell>{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</Table.Cell>
                   <Table.Cell style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                     <Button variant="ghost" size="2" onClick={() => openEdit(r)}>Edit</Button>
-                    <Button variant="destructive" size="2" onClick={() => remove(r.id)}>Delete</Button>
+                    <Button variant="solid" size="2" onClick={() => remove(r.id)}>Delete</Button>
                   </Table.Cell>
                 </Table.Row>
               ))}

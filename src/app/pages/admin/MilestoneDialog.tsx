@@ -44,7 +44,7 @@ export default function MilestoneDialog({ open, onOpenChange, editing, setEditin
       <Dialog.Portal>
         <Dialog.Overlay className={styles.Overlay}/>
         <Dialog.Content className={styles.Content}>
-              <Dialog.Title className={styles.Title} size="5">{local?.id ? "Edit milestone" : "New milestone"}</Dialog.Title>
+              <Dialog.Title className={styles.Title}>{local?.id ? "Edit milestone" : "New milestone"}</Dialog.Title>
 				<fieldset className={styles.Fieldset}>
 					<label className={styles.Label} htmlFor="title">
 						Title
