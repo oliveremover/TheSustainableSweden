@@ -56,7 +56,7 @@ export default async function MilestonePage({ params }: { params: { id: string }
           name: String(cat),
           uv: transformed.series[i] ?? null,
         }))
-      : sampleData;
+      : [];
 
   // --- NEW: compute linear goal (pv) series from milestone.goal JSON on the page to keep flexibility ---
   // expected goal shape: { "series":[71203.3], "categories":[1990,2030], "change":[0.63] }

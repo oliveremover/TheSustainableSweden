@@ -1,4 +1,4 @@
-import { Card, Flex, Text, Progress, Container, Heading, Grid, SegmentedControl } from "@radix-ui/themes";
+import { Card, Flex, Text, Progress, Container, Heading, Grid, SegmentedControl, Button } from "@radix-ui/themes";
 import { createClient } from '@/utils/supabase/server';
 import MilestoneGrid from "./components/MilestoneGrid";
 import styles from "./page.module.css";
@@ -20,7 +20,7 @@ export async function GET(): Promise<Milestone[]> {
     .order("id", { ascending: true });
 
   if (error) {
-    console.error("Supabase error:", error.message);
+    console.log("Supabase error:", error.message);
     return [];
   }
   return (data ?? []) as Milestone[];
@@ -47,13 +47,18 @@ export default async function HomePage() {
   const needAttentionMilestones = milestones.filter((m) => m.progress < 40).length;
 
   return (
-    <Container size="4" py="6" mx="4">
+    <Container size="4" py="6" mx="4" style={{ position: "relative" }}>
       <Flex direction="column" gap="6">
+        {/* Top bar: login button (top-right) */}
+        <Flex justify="end" align="center" style={{ marginBottom: 8 }}>
+          <a href="/pages/login" style={{ textDecoration: "none" }}>
+            <Button>Sign in</Button>
+          </a>
+        </Flex>
+
         {/* Header */}
         <Flex direction="column" gap="3" align="center">
-          <Heading size="8" align="center">
-            Swedish Environmental Milestones
-          </Heading>
+          <Heading size="8" align="center">Swedish Environmental Milestones</Heading>
           <Text size="4" color="gray" align="center" style={{ maxWidth: 600 }}>
             Monitor progress towards Sweden's 16 environmental quality objectives that define the state of the Swedish environment.
           </Text>
